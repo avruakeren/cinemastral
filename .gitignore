@@ -68,3 +68,4 @@ next-env.d.ts
 .start.log
 .deploy.err.log
 
+.env*

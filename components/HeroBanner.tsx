@@ -53,13 +53,19 @@ export function HeroBanner({ items }: { items: Content[] }) {
 
   if (!current) return null;
 
-  const meta = [current.type?.toUpperCase(), current.release_year, current.country]
+  const meta = [current.rating ? `${Number(current.rating).toFixed(1)}/10` : null, current.release_year, current.type?.toUpperCase()]
     .filter(Boolean)
     .join(" • ");
 
-  // Build logo URL from TMDB logo_path (similar to how poster/backdrop URLs are built)
+  const genres = Array.isArray(current.genres)
+    ? (current.genres as { name?: string[] | string }[])
+        .map((g) => (Array.isArray(g.name) ? g.name[0] : g.name))
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
+
   const logoUrl = current.logo_url
-    ? `${current.logo_url}` // already full URL from tmdbToContent
+    ? `${current.logo_url}`
     : null;
 
   return (
@@ -86,54 +92,33 @@ export function HeroBanner({ items }: { items: Content[] }) {
             fetchPriority="high"
           />
         )}
-        {logoUrl && (
-          <img
-            key="logo"
-            src={logoUrl}
-            alt={current.title}
-            referrerPolicy="no-referrer"
-            className="hero-logo"
-            loading="lazy"
-          />
-        )}
-        {!logoUrl && (
-          <h1 className="hero-title">{current.title}</h1>
-        )}
       </div>
       <div className="hero-overlay" />
       <div className="hero-content" key={`content-${index}`}>
-        {current.type && <span className="hero-kicker">{current.type}</span>}
+        <h1 className="hero-title">{current.title}</h1>
         <div className="hero-meta">
           {current.rating ? (
             <span className="hero-rating">
               <i className="fa-solid fa-star" />
-              {Number(current.rating).toFixed(1)}
+              {Number(current.rating).toFixed(1)}/10
             </span>
           ) : null}
-          <span>{meta}</span>
+          {current.release_year && <span>{current.release_year}</span>}
+          {genres.length > 0 && <span>{genres[0]}</span>}
         </div>
-        {Array.isArray(current.genres) && current.genres.length > 0 && (
-          <div className="hero-genres mb-4">
-            {(current.genres as { name?: string[] | string }[])
-              .map((g) => (Array.isArray(g.name) ? g.name[0] : g.name))
-              .filter(Boolean)
-              .slice(0, 3)
-              .map((name) => (
-                <span key={name}>{name}</span>
-              ))}
-          </div>
+        {current.synopsis && (
+          <p className="hero-overview">{current.synopsis}</p>
         )}
-        <div className="flex items-center gap-3">
+        <div className="hero-actions">
           <Link href={`/watch/${current.slug}`} className="hero-play-btn">
             <i className="fa-solid fa-play" />
-            Tonton Sekarang
+            Play
           </Link>
-          <Link
-            href={`/detail/${current.slug}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
-          >
+          <Link href={`/detail/${current.slug}`} className="hero-action-circle">
+            <i className="fa-solid fa-plus" />
+          </Link>
+          <Link href={`/detail/${current.slug}`} className="hero-action-circle">
             <i className="fa-solid fa-circle-info" />
-            Detail
           </Link>
         </div>
       </div>
@@ -154,27 +139,6 @@ export function HeroBanner({ items }: { items: Content[] }) {
           >
             <i className="fa-solid fa-chevron-right" />
           </button>
-
-          {/* Progress bars */}
-          <div className="hero-progress">
-            {featured.map((_, i) => (
-              <button
-                key={i}
-                className="hero-progress-bar"
-                aria-label={`Go to slide ${i + 1}`}
-                onClick={() => goTo(i)}
-              >
-                <span
-                  key={`${i}-${tick}`}
-                  className="hero-progress-fill"
-                  style={{
-                    animation:
-                      i === index ? `heroProgress ${INTERVAL}ms linear forwards` : "none",
-                  }}
-                />
-              </button>
-            ))}
-          </div>
 
           {/* Dots */}
           <div className="hero-dots" aria-label="Featured carousel">

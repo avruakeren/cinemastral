@@ -30,12 +30,12 @@ export function Header({ links, user }: { links?: HeaderLink[]; user?: HeaderUse
 
   return (
     <HeaderShell>
-      <div className="flex items-center h-14 sm:h-16 gap-6">
+      <div className="flex items-center h-12 sm:h-14 gap-4">
         <Link href="/" className="logo-mark" onClick={() => setMenuOpen(false)}>
-          <img src="/logo.png" alt="Cinemastral" width={400} height={225} className="h-7 w-auto" />
+          <img src="/logo.png" alt="Cinemastral" width={400} height={225} className="h-6 sm:h-7 w-auto" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-0.5 ml-auto">
           {links?.map((l) => {
             const icon = NAV_ICONS[l.href];
             return (
@@ -52,7 +52,7 @@ export function Header({ links, user }: { links?: HeaderLink[]; user?: HeaderUse
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-1">
           <Link href="/search" className="hero-nav-icon-btn" aria-label="Search">
             <i className="fa-solid fa-magnifying-glass" />
           </Link>
@@ -65,8 +65,14 @@ export function Header({ links, user }: { links?: HeaderLink[]; user?: HeaderUse
               <i className="fa-solid fa-bell" />
             </Link>
           )}
+        </div>
+
+        <div className="flex md:hidden items-center gap-1 ml-auto">
+          <Link href="/search" className="hero-nav-icon-btn" aria-label="Search">
+            <i className="fa-solid fa-magnifying-glass" />
+          </Link>
           <button
-            className="hero-nav-icon-btn md:hidden"
+            className="hero-nav-icon-btn"
             aria-label={menuOpen ? "Close menu" : "Menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}

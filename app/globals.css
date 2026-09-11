@@ -113,17 +113,17 @@
     padding: 0 2px;
   }
 
-  /* ===== NAV LINKS — Netflix style ===== */
+  /* ===== NAV LINKS — compact pill style ===== */
   .hero-nav-link {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    padding: 7px 14px;
+    gap: 6px;
+    padding: 6px 12px;
     border-radius: 999px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.75);
+    color: rgba(255, 255, 255, 0.8);
     background: transparent;
     border: none;
     cursor: pointer;
@@ -131,7 +131,7 @@
     white-space: nowrap;
   }
   .hero-nav-link i {
-    font-size: 13px;
+    font-size: 12px;
   }
   .hero-nav-link:hover {
     color: #fff;
@@ -146,8 +146,8 @@
     background: rgba(255, 255, 255, 0.9);
   }
   .hero-nav-icon-btn {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -155,7 +155,7 @@
     border: none;
     background: transparent;
     color: #fff;
-    font-size: 15px;
+    font-size: 14px;
     cursor: pointer;
     transition: background 0.2s ease, color 0.2s ease;
   }

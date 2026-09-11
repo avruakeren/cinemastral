@@ -1,0 +1,9 @@
+name = "cinemastral-moviebox"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+
+[[cors]]
+origin = "*"
+methods = ["GET", "HEAD", "OPTIONS"]
+headers = ["Content-Type", "Range"]
+expose_headers = ["Content-Range", "Accept-Ranges", "Content-Length", "Content-Type"]

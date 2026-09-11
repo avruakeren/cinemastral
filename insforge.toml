@@ -1,0 +1,9 @@
+[auth]
+allowed_redirect_urls = [
+  "http://localhost:3000/api/auth/callback",
+  "http://localhost:3000/login",
+  "http://localhost:3000/register",
+  "https://cinemastral.web.id/api/auth/callback",
+  "https://cinemastral.web.id/login",
+  "https://cinemastral.web.id/register",
+]

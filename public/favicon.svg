@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Cinemastral">
+  <title>Cinemastral</title>
+  <rect width="128" height="128" rx="22" fill="#0f1014"/>
+  <g fill="#ffffff">
+    <rect x="20" y="30" width="88" height="66" rx="8" fill="#ffffff" fill-opacity=".95"/>
+    <rect x="20" y="30" width="88" height="18" rx="8" fill="#ffffff"/>
+    <rect x="33" y="50" width="9" height="9" fill="#0f1014" fill-opacity=".3"/>
+    <rect x="50" y="50" width="9" height="9" fill="#0f1014" fill-opacity=".3"/>
+    <rect x="67" y="50" width="9" height="9" fill="#0f1014" fill-opacity=".3"/>
+    <path d="M20 90v8a8 8 0 0 0 8 8h7a6 6 0 1 1 0 12H28a20 20 0 0 1-8-14v-6" fill="#fff" fill-opacity=".95"/>
+    <circle cx="100" cy="34" r="14" fill="#4f46e5"/>
+    <path d="M96.5 42l8-5v12l-8 5z" fill="#fff" fill-opacity=".9"/>
+  </g>
+</svg>

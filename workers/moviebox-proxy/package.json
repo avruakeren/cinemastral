@@ -1,0 +1,13 @@
+{
+  "name": "cinemastral-moviebox-proxy",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^3.78.0"
+  }
+}

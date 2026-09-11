@@ -68,10 +68,10 @@ export default async function Home() {
       <Header
         user={user}
         links={[
-          { href: "/", label: "Beranda", active: true },
-          { href: "/film", label: "Film", active: false },
-          { href: "/series", label: "Series", active: false },
-          { href: "/anime", label: "Anime", active: false },
+          { href: "/", label: "Home", active: true },
+          { href: "/film", label: "Movies", active: false },
+          { href: "/series", label: "Shows", active: false },
+          { href: "/watchlist", label: "My List", active: false },
         ]}
       />
       <main className="flex-1">

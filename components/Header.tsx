@@ -30,12 +30,12 @@ export function Header({ links, user }: { links?: HeaderLink[]; user?: HeaderUse
 
   return (
     <HeaderShell>
-      <div className="flex items-center h-14 sm:h-16 gap-4">
+      <div className="flex items-center h-14 sm:h-16 gap-6">
         <Link href="/" className="logo-mark" onClick={() => setMenuOpen(false)}>
           <img src="/logo.png" alt="Cinemastral" width={400} height={225} className="h-7 w-auto" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1 flex-1 min-w-0">
+        <nav className="hidden md:flex items-center gap-1">
           {links?.map((l) => {
             const icon = NAV_ICONS[l.href];
             return (
@@ -43,45 +43,35 @@ export function Header({ links, user }: { links?: HeaderLink[]; user?: HeaderUse
                 key={l.href}
                 href={l.href}
                 aria-current={l.active ? "page" : undefined}
-                className={cn("header-nav-link", l.active && "active")}
+                className={cn("hero-nav-link", l.active && "is-active")}
               >
-                {icon && <i className={`fa-solid ${icon} header-nav-icon`} aria-hidden="true" />}
+                {icon && <i className={`fa-solid ${icon}`} aria-hidden="true" />}
                 {l.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-          <Link href="/search" className="header-action-btn" aria-label="Cari">
-            <i className="fa-solid fa-magnifying-glass text-sm" />
-          </Link>
-          <Link href="/watchlist" className="header-action-btn hidden sm:flex" aria-label="Daftar tonton">
-            <i className="fa-solid fa-bookmark text-sm" />
+        <div className="ml-auto flex items-center gap-2">
+          <Link href="/search" className="hero-nav-icon-btn" aria-label="Search">
+            <i className="fa-solid fa-magnifying-glass" />
           </Link>
           {user ? (
-            <>
-              <Link href="/watchlist" className="header-avatar" title={user.email ?? ""}>
-                {(user.username ?? user.email ?? "U").slice(0, 2).toUpperCase()}
-              </Link>
-              <form action={signOut}>
-                <button className="header-action-btn" type="submit" aria-label="Keluar">
-                  <i className="fa-solid fa-right-from-bracket text-sm" />
-                </button>
-              </form>
-            </>
+            <Link href="/watchlist" className="hero-nav-icon-btn" aria-label="My List">
+              <i className="fa-solid fa-bookmark" />
+            </Link>
           ) : (
-            <Link href="/login" className="header-action-btn" aria-label="Masuk">
-              <i className="fa-solid fa-user text-sm" />
+            <Link href="/login" className="hero-nav-icon-btn" aria-label="Login">
+              <i className="fa-solid fa-bell" />
             </Link>
           )}
           <button
-            className="header-action-btn md:hidden"
-            aria-label={menuOpen ? "Tutup menu" : "Menu"}
+            className="hero-nav-icon-btn md:hidden"
+            aria-label={menuOpen ? "Close menu" : "Menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
           >
-            <i className={`fa-solid ${menuOpen ? "fa-xmark" : "fa-bars"} text-sm`} />
+            <i className={`fa-solid ${menuOpen ? "fa-xmark" : "fa-bars"}`} />
           </button>
         </div>
       </div>
@@ -98,6 +88,13 @@ export function Header({ links, user }: { links?: HeaderLink[]; user?: HeaderUse
               {l.label}
             </Link>
           ))}
+          {user && (
+            <form action={signOut}>
+              <button className="mobile-nav-link w-full text-left" type="submit">
+                Sign Out
+              </button>
+            </form>
+          )}
         </nav>
       )}
     </HeaderShell>

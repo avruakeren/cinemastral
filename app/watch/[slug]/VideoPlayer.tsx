@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { MediaPlayer, MediaProvider, Track, useMediaPlayer } from "@vidstack/react";
 import {
   DefaultMenuCheckbox,
@@ -13,6 +13,7 @@ import "@vidstack/react/player/styles/base.css";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
 import { saveProgress } from "@/lib/actions";
+import { resolveMovieboxClient, type MovieboxStream, type MovieboxCaption } from "@/lib/providers/moviebox-client";
 import type { ResolvedSource, StreamOption, CaptionTrack } from "@/lib/providers/types";
 
 function detectVideoType(url: string): "application/x-mpegurl" | "application/dash+xml" | "video/webm" | "video/mp4" {
@@ -141,6 +142,7 @@ function SeekToStart({ startTime }: { startTime?: number }) {
 
 export function VideoPlayer({
   sources,
+  movieboxParams,
   preferredSource,
   title,
   poster,
@@ -151,15 +153,19 @@ export function VideoPlayer({
   onSourceChange,
 }: {
   sources: ResolvedSource[];
+  movieboxParams?: {
+    subjectId: string | null;
+    detailPath: string;
+    season?: string;
+    episode?: string;
+  } | null;
   preferredSource?: string;
   title: string;
   poster?: string | null;
   contentId?: string;
   episodeId?: string | null;
   startTime?: number;
-  /** Controlled active source id. When omitted, internal state is used (preferredSource/sources[0]). */
   activeSourceId?: string;
-  /** Notify parent of the active source id when controlled externally (e.g. iframe fallback). */
   onSourceChange?: (id: string) => void;
 }) {
   const [internalId, setInternalId] = useState<string>(
@@ -168,6 +174,43 @@ export function VideoPlayer({
       : sources[0]?.id ?? "",
   );
 
+  const [movieboxSource, setMovieboxSource] = useState<ResolvedSource | null>(null);
+  const [movieboxLoading, setMovieboxLoading] = useState(false);
+
+  // Resolve MovieBox client-side on mount
+  useEffect(() => {
+    if (!movieboxParams?.subjectId) return;
+    setMovieboxLoading(true);
+    resolveMovieboxClient(
+      movieboxParams.subjectId,
+      movieboxParams.detailPath,
+      movieboxParams.season,
+      movieboxParams.episode,
+    ).then((result) => {
+      if (result) {
+        setMovieboxSource({
+          id: "moviebox",
+          label: "MovieBox",
+          kind: "hls",
+          hls: {
+            streams: result.streams.map((s) => ({
+              quality: s.quality,
+              url: s.url,
+            })),
+            captions: result.captions.map((c) => ({
+              src: c.src,
+              label: c.label,
+              language: c.language,
+              type: c.type,
+              defaultTrack: c.defaultTrack,
+            })),
+          },
+        });
+        setInternalId("moviebox");
+      }
+    }).finally(() => setMovieboxLoading(false));
+  }, [movieboxParams?.subjectId, movieboxParams?.detailPath, movieboxParams?.season, movieboxParams?.episode]);
+
   const controlled = activeSourceId !== undefined;
   const activeId = controlled ? activeSourceId : internalId;
   const setActiveId = (id: string) => {
@@ -175,7 +218,22 @@ export function VideoPlayer({
     else setInternalId(id);
   };
 
-  const active = sources.find((s) => s.id === activeId) ?? sources[0];
+  // Merge movieboxSource into sources list
+  const allSources = movieboxSource
+    ? [movieboxSource, ...sources.filter((s) => s.id !== "moviebox")]
+    : sources;
+  const active = allSources.find((s) => s.id === activeId) ?? allSources[0];
+
+  if (movieboxLoading && !active) {
+    return (
+      <div className="flex aspect-video w-full items-center justify-center rounded-lg bg-[var(--color-surface-2)]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+          <p className="text-sm text-white/60">Memuat stream...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!active) {
     return (

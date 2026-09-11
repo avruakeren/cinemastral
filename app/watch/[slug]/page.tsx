@@ -8,7 +8,6 @@ import { isAdultContent } from "@/lib/adult-filter";
 import { ensureContentSynced, fetchOflixDetail } from "@/lib/sync";
 import { resolveVidcoreSource } from "@/lib/providers/vidcore";
 import { resolveVidcoreByTmdbId } from "@/lib/providers/vidcore";
-import { resolveMovieboxSource } from "@/lib/providers/moviebox";
 import type { ResolvedSource } from "@/lib/providers/types";
 import type { Episode } from "@/lib/types";
 import {
@@ -93,7 +92,6 @@ export default async function WatchPage({
   const sources: ResolvedSource[] = [];
   try {
     if (isTmdb && tmdbSlugMatch) {
-      // TMDB-backed titles are not in the Oflix catalog; only VidCore (TMDB id based) applies.
       const vc = resolveVidcoreByTmdbId(
         tmdbSlugMatch.id,
         tmdbSlugMatch.mediaType,
@@ -103,25 +101,25 @@ export default async function WatchPage({
       );
       sources.push(vc);
     } else {
-      const [vidcore, moviebox] = await Promise.all([
-        resolveVidcoreSource(
-          content,
-          isFilm ? undefined : String(season),
-          isFilm ? undefined : String(episodeNo),
-        ),
-        resolveMovieboxSource(
-          content,
-          isFilm ? undefined : String(season),
-          isFilm ? undefined : String(episodeNo),
-        ),
-      ]);
-      // Primary = MovieBox (themebox), alternative = VidCore (ordered: moviebox first).
-      if (moviebox) sources.push(moviebox);
+      const vidcore = await resolveVidcoreSource(
+        content,
+        isFilm ? undefined : String(season),
+        isFilm ? undefined : String(episodeNo),
+      );
       if (vidcore) sources.push(vidcore);
     }
   } catch (e) {
     console.error("[watch:resolveSources]", slug, season, episodeNo, e);
   }
+
+  const movieboxParams = !isTmdb
+    ? {
+        subjectId: content.source_key ?? null,
+        detailPath: content.source_id ?? content.slug,
+        season: isFilm ? undefined : String(season),
+        episode: isFilm ? undefined : String(episodeNo),
+      }
+    : null;
 
   const episodePicker =
     !isFilm && episodes.length > 0
@@ -156,6 +154,7 @@ export default async function WatchPage({
         </h1>
         <WatchArea
           sources={sources}
+          movieboxParams={movieboxParams}
           preferredSource="moviebox"
           title={content.title}
           poster={content.backdrop_url ?? content.poster_url}

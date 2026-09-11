@@ -1,5 +1,4 @@
 import { createInsForgeServerClient } from "@/lib/insforge/server";
-import { isAdultContent } from "@/lib/adult-filter";
 import type { Content, Genre, Episode, StreamData } from "@/lib/types";
 
 const SELECT_CONTENT =
@@ -45,7 +44,7 @@ export async function getContents(params: {
   }
   const { data, error } = await query.order(orderBy, { ascending: orderDirection === "asc" }).range(offset, offset + limit - 1);
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapContentRow).filter((c) => !isAdultContent({ title: c.title, genres: c.genres }));
+  return (data ?? []).map(mapContentRow);
 }
 
 export async function getContentBySlug(slug: string): Promise<Content | null> {
@@ -83,7 +82,7 @@ export async function getTrending(limit = 20): Promise<Content[]> {
     .order("updated_at", { ascending: false })
     .range(0, limit - 1);
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapContentRow).filter((c) => !isAdultContent({ title: c.title, genres: c.genres }));
+  return (data ?? []).map(mapContentRow);
 }
 
 export async function getRecentAdded(limit = 20): Promise<Content[]> {
@@ -95,7 +94,7 @@ export async function getRecentAdded(limit = 20): Promise<Content[]> {
     .order("updated_at", { ascending: false })
     .range(0, limit - 1);
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapContentRow).filter((c) => !isAdultContent({ title: c.title, genres: c.genres }));
+  return (data ?? []).map(mapContentRow);
 }
 
 export async function getUpcoming(limit = 12): Promise<Content[]> {
@@ -110,7 +109,7 @@ export async function getUpcoming(limit = 12): Promise<Content[]> {
     .order("rating", { ascending: false, nullsFirst: false })
     .range(0, limit - 1);
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapContentRow).filter((c) => !isAdultContent({ title: c.title, genres: c.genres }));
+  return (data ?? []).map(mapContentRow);
 }
 
 export async function searchContent(query: string, limit = 24): Promise<Content[]> {
@@ -122,5 +121,5 @@ export async function searchContent(query: string, limit = 24): Promise<Content[
     .order("rating", { ascending: false, nullsFirst: false })
     .range(0, limit - 1);
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapContentRow).filter((c) => !isAdultContent({ title: c.title, genres: c.genres }));
+  return (data ?? []).map(mapContentRow);
 }

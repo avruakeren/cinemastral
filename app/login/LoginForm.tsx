@@ -61,7 +61,7 @@ export function LoginForm({ mode, next }: { mode: "signin" | "signup"; next?: st
         </p>
       )}
       {notice && (
-        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
+        <p className="rounded-lg border border-purple-400/30 bg-purple-400/10 px-3 py-2 text-xs text-purple-300">
           {notice}
         </p>
       )}

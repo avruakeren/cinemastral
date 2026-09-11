@@ -1,13 +1,11 @@
 "use client";
 
 import { useMovieDetailModal } from "@/lib/hooks/use-movie-detail-modal";
-import { formatReleaseDate } from "@/lib/date-utils";
 import type { Content } from "@/lib/types";
 
 export function MovieCard({ content }: { content: Content }) {
   const year = content.release_year;
   const rating = content.rating;
-  const rilis = formatReleaseDate(content.release_date);
   const { open } = useMovieDetailModal();
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -16,9 +14,6 @@ export function MovieCard({ content }: { content: Content }) {
       open(content.slug);
     }
   };
-
-  const badge = rilis ? rilis : year ? `${year}` : rating ? `${rating}` : null;
-  const badgeClass = rilis ? "top" : year ? "top" : rating ? "new" : "";
 
   return (
     <div
@@ -46,11 +41,17 @@ export function MovieCard({ content }: { content: Content }) {
         <div className="card-play" aria-hidden>
           <i className="fa-solid fa-play" />
         </div>
+        <div className="card-bottom-info">
+          <div className="card-title">{content.title}</div>
+          {(year || rating != null) && (
+            <div className="card-meta">
+              {year && <span>{year}</span>}
+              {year && rating != null && <span className="card-meta-dot">★</span>}
+              {rating != null && <span>★ {Number(rating).toFixed(1)}</span>}
+            </div>
+          )}
+        </div>
       </div>
-      {badge ? (
-        <span className={`card-badge ${badgeClass}`}>{badge}</span>
-      ) : null}
-      <div className="card-label">{content.title}</div>
     </div>
   );
 }

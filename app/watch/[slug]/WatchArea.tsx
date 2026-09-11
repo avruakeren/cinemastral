@@ -31,12 +31,6 @@ function ServerSelector({
 
 interface WatchAreaProps {
   sources: ResolvedSource[];
-  movieboxParams?: {
-    subjectId: string | null;
-    detailPath: string;
-    season?: string;
-    episode?: string;
-  } | null;
   preferredSource?: string;
   title: string;
   poster?: string | null;
@@ -56,7 +50,6 @@ interface WatchAreaProps {
 export function WatchArea(props: WatchAreaProps) {
   const {
     sources,
-    movieboxParams,
     preferredSource,
     title,
     poster,
@@ -64,24 +57,18 @@ export function WatchArea(props: WatchAreaProps) {
     episodeId,
     startTime,
     isFilm,
-  episodePicker,
+    episodePicker,
   } = props;
 
-  // Add MovieBox placeholder to sources so ServerSelector shows it
-  const hasMoviebox = movieboxParams?.subjectId && !sources.some((s) => s.id === "moviebox");
-  const displaySources = hasMoviebox
-    ? [{ id: "moviebox", label: "MovieBox", kind: "hls" as const }, ...sources]
-    : sources;
-
   const initialId =
-    preferredSource && displaySources.find((s) => s.id === preferredSource)
+    preferredSource && sources.find((s) => s.id === preferredSource)
       ? preferredSource
-      : displaySources[0]?.id;
+      : sources[0]?.id;
   const [activeSourceId, setActiveSourceId] = useState<string | undefined>(initialId);
 
   const serverSelector: ReactNode = (
     <ServerSelector
-      sources={displaySources}
+      sources={sources}
       activeId={activeSourceId}
       onSourceChange={setActiveSourceId}
     />
@@ -91,7 +78,6 @@ export function WatchArea(props: WatchAreaProps) {
     <>
       <VideoPlayer
         sources={sources}
-        movieboxParams={movieboxParams}
         preferredSource={preferredSource}
         title={title}
         poster={poster}

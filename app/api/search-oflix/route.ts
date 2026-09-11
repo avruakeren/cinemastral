@@ -1,7 +1,6 @@
 import { oflixFetch, OFLIX_ACTIONS, normalizeCatalogItem, type OflixCatalogItem } from "@/lib/scrapers/oflix";
 import { createInsForgeServerClient } from "@/lib/insforge/server";
 import { mapContentRow } from "@/lib/data";
-import { isAdultContent } from "@/lib/adult-filter";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { searchTmdbResults, tmdbToContent } from "@/lib/tmdb";
 
@@ -22,7 +21,6 @@ interface SearchResultItem {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q") ?? "";
-  const includeAdult = searchParams.get("adult") === "1";
 
   const limited = rateLimit(`search:${clientIp(request)}`, 30);
   if (!limited.ok) {
@@ -33,7 +31,6 @@ export async function GET(request: Request) {
     return Response.json({ results: [] });
   }
 
-  // Merge local DB + TMDB + Oflixt into one deduplicated list (by normalized title).
   const merged: SearchResultItem[] = [];
   const seenTitles = new Set<string>();
   const seenSlugs = new Set<string>();
@@ -46,18 +43,17 @@ export async function GET(request: Request) {
     merged.push(item);
   };
 
-  // 1. Local DB
+  // 1. Local DB (search title + alt_title)
   try {
     const sb = await createInsForgeServerClient();
     const { data: localData } = await sb.database
       .from("content")
       .select("id, slug, title, alt_title, synopsis, type, poster_url, backdrop_url, release_year, rating, duration, status, country, source_id, source_key, featured, trending, created_at, updated_at, genres:content_genres(genre_id, name:genres(name, slug))")
-      .ilike("title", `%${query}%`)
+      .or(`title.ilike.%${query}%,alt_title.ilike.%${query}%`)
       .order("rating", { ascending: false, nullsFirst: false })
       .range(0, 23);
 
     for (const c of (localData ?? []).map((row) => mapContentRow(row as never))) {
-      if (!includeAdult && isAdultContent({ title: c.title, genres: c.genres })) continue;
       push({
         id: c.id,
         slug: c.slug,
@@ -74,12 +70,11 @@ export async function GET(request: Request) {
     console.error("search-oflix local error:", e);
   }
 
-  // 2. TMDB (reliable search; slug is playable via the TMDB-backed watch/detail pipeline)
+  // 2. TMDB (if API key available)
   try {
-    const tmdb = await searchTmdbResults(query, { includeAdult });
+    const tmdb = await searchTmdbResults(query);
     for (const item of tmdb) {
       const c = tmdbToContent(item);
-      if (!includeAdult && isAdultContent({ title: c.title, genres: c.genres })) continue;
       push({
         id: c.slug,
         slug: c.slug,
@@ -96,14 +91,12 @@ export async function GET(request: Request) {
     console.error("search-oflix tmdb error:", e);
   }
 
-  // 3. Oflixt
+  // 3. Oflixt (fallback, may fail if Oflix relay is down)
   try {
     const res = await oflixFetch<{ success: boolean; items: OflixCatalogItem[] }>(
       OFLIX_ACTIONS.search,
       [query]
     );
-    // Oflix's search server-action ignores the query (returns an unrelated
-    // fallback list), so only keep items that share at least one word with it.
     const queryWords = query.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 1);
     const sharesQuery = (title: string) => {
       const words = new Set(title.toLowerCase().split(/[^a-z0-9]+/));
@@ -112,7 +105,6 @@ export async function GET(request: Request) {
     if (res.success && Array.isArray(res.items)) {
       for (const raw of res.items) {
         const n = normalizeCatalogItem(raw);
-        if (!includeAdult && isAdultContent({ title: n.title, genres: n.genres })) continue;
         if (queryWords.length > 0 && !sharesQuery(n.title)) continue;
         push({
           id: n.sourceId ?? n.slug,

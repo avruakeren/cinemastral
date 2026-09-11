@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { MovieCard } from "@/components/MovieCard";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { getAdultMode, subscribeAdultMode } from "@/lib/adult-store";
 import type { Content } from "@/lib/types";
 
 interface SearchResultItem {
@@ -27,7 +26,6 @@ export function SearchResults({ query }: { query: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [prevQuery, setPrevQuery] = useState(query);
-  const adult = useSyncExternalStore(subscribeAdultMode, getAdultMode);
 
   if (prevQuery !== query) {
     setPrevQuery(query);
@@ -42,7 +40,7 @@ export function SearchResults({ query }: { query: string }) {
     const controller = new AbortController();
 
     fetch(
-      `/api/search-oflix?q=${encodeURIComponent(query)}${adult ? "&adult=1" : ""}`,
+      `/api/search-oflix?q=${encodeURIComponent(query)}`,
       { signal: controller.signal },
     )
       .then((res) => {
@@ -60,7 +58,7 @@ export function SearchResults({ query }: { query: string }) {
       });
 
     return () => controller.abort();
-  }, [query, adult]);
+  }, [query]);
 
   if (loading) {
     return (

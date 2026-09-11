@@ -10,7 +10,6 @@ import { getCurrentProfile } from "@/lib/actions";
 import { ensureContentSynced, fetchOflixDetail } from "@/lib/sync";
 import { isInWatchlist } from "@/lib/user-data";
 import { oflixDetailToEpisodes } from "@/lib/scrapers/oflix";
-import { isAdultContent } from "@/lib/adult-filter";
 import { parseTmdbSlug, getTmdbDetails, tmdbToFullContent, buildTmdbEpisodes } from "@/lib/tmdb";
 import type { Content, Episode } from "@/lib/types";
 
@@ -34,7 +33,6 @@ export default async function DetailPage({ params }: { params: Promise<{ slug: s
     const d = await getTmdbDetails(tmdbMatch.mediaType, tmdbMatch.id);
     if (!d) notFound();
     content = tmdbToFullContent(d);
-    if (isAdultContent({ title: content.title, genres: content.genres })) notFound();
     related = [];
     if (content.type === "series") {
       const tmdbEps = await buildTmdbEpisodes(tmdbMatch.id, d.seasons ?? []);
@@ -58,7 +56,6 @@ export default async function DetailPage({ params }: { params: Promise<{ slug: s
     content = await getContentBySlug(slug);
     if (!content) content = await ensureContentSynced(slug);
     if (!content) notFound();
-    if (isAdultContent({ title: content.title, genres: content.genres })) notFound();
     inList = user ? await isInWatchlist(user.id, content.id) : false;
 
     if (content.type === "series" || content.type === "anime") {

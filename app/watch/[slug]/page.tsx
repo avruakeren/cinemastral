@@ -4,10 +4,10 @@ import { WatchArea } from "./WatchArea";
 import { getContentBySlug, getEpisodes } from "@/lib/data";
 import { getCurrentProfile } from "@/lib/actions";
 import { oflixDetailToEpisodes } from "@/lib/scrapers/oflix";
-import { isAdultContent } from "@/lib/adult-filter";
 import { ensureContentSynced, fetchOflixDetail } from "@/lib/sync";
 import { resolveVidcoreSource } from "@/lib/providers/vidcore";
 import { resolveVidcoreByTmdbId } from "@/lib/providers/vidcore";
+import { resolveMovieboxSource } from "@/lib/providers/moviebox";
 import type { ResolvedSource } from "@/lib/providers/types";
 import type { Episode } from "@/lib/types";
 import {
@@ -44,7 +44,6 @@ export default async function WatchPage({
        })()
      : (await getContentBySlug(slug) ?? (await ensureContentSynced(slug)));
    if (!content) notFound();
-   if (isAdultContent({ title: content.title, genres: content.genres })) notFound();
 
   const isFilm = content.type === "film";
   const season = isFilm ? undefined : parseInt(sp.s ?? "1", 10) || 1;
@@ -101,25 +100,24 @@ export default async function WatchPage({
       );
       sources.push(vc);
     } else {
-      const vidcore = await resolveVidcoreSource(
-        content,
-        isFilm ? undefined : String(season),
-        isFilm ? undefined : String(episodeNo),
-      );
+      const [moviebox, vidcore] = await Promise.all([
+        resolveMovieboxSource(
+          content,
+          isFilm ? undefined : String(season),
+          isFilm ? undefined : String(episodeNo),
+        ),
+        resolveVidcoreSource(
+          content,
+          isFilm ? undefined : String(season),
+          isFilm ? undefined : String(episodeNo),
+        ),
+      ]);
+      if (moviebox) sources.push(moviebox);
       if (vidcore) sources.push(vidcore);
     }
   } catch (e) {
     console.error("[watch:resolveSources]", slug, season, episodeNo, e);
   }
-
-  const movieboxParams = !isTmdb
-    ? {
-        subjectId: content.source_key ?? null,
-        detailPath: content.source_id ?? content.slug,
-        season: isFilm ? undefined : String(season),
-        episode: isFilm ? undefined : String(episodeNo),
-      }
-    : null;
 
   const episodePicker =
     !isFilm && episodes.length > 0
@@ -154,7 +152,6 @@ export default async function WatchPage({
         </h1>
         <WatchArea
           sources={sources}
-          movieboxParams={movieboxParams}
           preferredSource="moviebox"
           title={content.title}
           poster={content.backdrop_url ?? content.poster_url}

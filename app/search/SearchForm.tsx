@@ -157,8 +157,15 @@ export function SearchForm({ initialQuery }: { initialQuery: string }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  function handleTagClick(tag: string) {
+    setQ(tag);
+    setIsTyping(true);
+    fetchSuggestions(tag);
+    router.push(`/search?q=${encodeURIComponent(tag)}`);
+  }
+
   return (
-    <div className="search-hero search-hero-enter">
+    <div className="w-full max-w-xl">
       <form ref={formRef} onSubmit={onSubmit} className="search-form" onKeyDown={handleKeyDown}>
         <i className="fa-solid fa-magnifying-glass search-form-icon" />
         <input
@@ -168,7 +175,7 @@ export function SearchForm({ initialQuery }: { initialQuery: string }) {
           onChange={handleChange}
           onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
           placeholder={q ? "" : placeholderText}
-          className="search-form-input text-center"
+          className="search-form-input"
           autoComplete="off"
           role="combobox"
           aria-expanded={showSuggestions}
@@ -190,9 +197,6 @@ export function SearchForm({ initialQuery }: { initialQuery: string }) {
             <i className="fa-solid fa-xmark" />
           </button>
         )}
-        <button type="submit" className="search-form-btn" aria-label="Cari">
-          <i className="fa-solid fa-arrow-right" />
-        </button>
       </form>
 
       {showSuggestions && suggestions.length > 0 && (

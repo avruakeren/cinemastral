@@ -8,7 +8,6 @@ import {
   oflixDetailToEpisodes,
   type OflixDetail,
 } from "@/lib/scrapers/oflix";
-import { isAdultContent } from "@/lib/adult-filter";
 import type { Content } from "@/lib/types";
 
 export async function fetchOflixDetail(slug: string): Promise<OflixDetail | null> {
@@ -36,7 +35,6 @@ export async function ensureContentSynced(slug: string): Promise<Content | null>
 
   const d = await fetchOflixDetail(slug);
   if (!d) return null;
-  if (isAdultContent({ title: d.title, genres: d.genre })) return null;
 
   const content = oflixDetailToContent(slug, d);
   const admin = createAdminServerClient();

@@ -75,7 +75,10 @@ export default async function Home() {
         ]}
       />
       <main className="flex-1">
-        <HeroBanner items={heroItems} />
+        <div className="home-hero-wrapper">
+          <HeroBanner items={heroItems} />
+          <div className="home-hero-bg" />
+        </div>
         <div className="home-content">
           {continueWithContent.length > 0 && (
             <section className="h-section">

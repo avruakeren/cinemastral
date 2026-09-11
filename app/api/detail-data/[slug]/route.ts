@@ -3,7 +3,6 @@ import { getEpisodes, getContents } from "@/lib/data";
 import { createInsForgeServerClient } from "@/lib/insforge/server";
 import { ensureContentSynced, fetchOflixDetail } from "@/lib/sync";
 import { isInWatchlist } from "@/lib/user-data";
-import { isAdultContent } from "@/lib/adult-filter";
 import { parseTmdbSlug, getTmdbDetails, tmdbToFullContent, buildTmdbEpisodes } from "@/lib/tmdb";
 
 export const dynamic = "force-dynamic";
@@ -19,12 +18,9 @@ export async function GET(
    if (tmdbMatch) {
      const d = await getTmdbDetails(tmdbMatch.mediaType, tmdbMatch.id);
      if (!d) return Response.json({ error: "Content not found" }, { status: 404 });
-     const content = tmdbToFullContent(d);
-     if (isAdultContent({ title: content.title, genres: content.genres })) {
-       return Response.json({ error: "Content not found" }, { status: 404 });
-     }
+      const content = tmdbToFullContent(d);
 
-      const sb = await createInsForgeServerClient();
+       const sb = await createInsForgeServerClient();
       const { data: { user } } = await sb.auth.getCurrentUser();
 
       let episodes: Array<{ season: number; episode_number: number; title: string | null }> = [];
@@ -62,9 +58,6 @@ export async function GET(
    const content = await ensureContentSynced(slug);
 
   if (!content) {
-    return Response.json({ error: "Content not found" }, { status: 404 });
-  }
-  if (isAdultContent({ title: content.title, genres: content.genres })) {
     return Response.json({ error: "Content not found" }, { status: 404 });
   }
 

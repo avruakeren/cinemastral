@@ -137,7 +137,7 @@ export async function getTmdbPopular(limit = 20): Promise<TmdbItem[]> {
 /** Search TMDB (movie + tv) for `query` as normalized items. Returns [] if no key. */
 export async function searchTmdbResults(
   query: string,
-  opts?: { includeAdult?: boolean; limit?: number },
+  opts?: { limit?: number },
 ): Promise<TmdbItem[]> {
   if (!key) {
     console.warn("[tmdb] no TMDB_API_KEY set; skipping search");
@@ -146,14 +146,13 @@ export async function searchTmdbResults(
   const q = query.trim();
   if (!q) return [];
   const limit = opts?.limit ?? 12;
-  const includeAdult = opts?.includeAdult ?? false;
 
   const [movies, tvs] = await Promise.all([
     fetch(
       tmdbUrl("/search/movie", {
         query: q,
         page: "1",
-        include_adult: String(includeAdult),
+        include_adult: "false",
       }),
       { next: { revalidate: 60 * 60 * 24 } },
     )
@@ -163,7 +162,7 @@ export async function searchTmdbResults(
       tmdbUrl("/search/tv", {
         query: q,
         page: "1",
-        include_adult: String(includeAdult),
+        include_adult: "false",
       }),
       { next: { revalidate: 60 * 60 * 24 } },
     )

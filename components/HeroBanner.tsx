@@ -21,6 +21,13 @@ export function HeroBanner({ items }: { items: Content[] }) {
     indexRef.current = index;
   }, [index]);
 
+  useEffect(() => {
+    if (current) {
+      const imgUrl = current.backdrop_url ?? current.poster_url ?? "";
+      document.documentElement.style.setProperty("--hero-bg-url", `url(${imgUrl})`);
+    }
+  }, [current]);
+
   function goTo(i: number) {
     if (!featured.length) return;
     setPrev(index);

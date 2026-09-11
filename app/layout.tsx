@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Montserrat } from "next/font/google";
 import { MovieDetailModalProvider } from "@/lib/hooks/use-movie-detail-modal";
 import { MovieDetailModal } from "@/components/MovieDetailModal";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { FontAwesome } from "@/components/FontAwesome";
 import "./globals.css";
@@ -45,7 +46,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#95FF50",
+  themeColor: "#C4A1FF",
   width: "device-width",
   initialScale: 1,
 };
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
           <MovieDetailModal />
         </MovieDetailModalProvider>
+        <MobileBottomNav />
         <ServiceWorkerRegister />
       </body>
     </html>

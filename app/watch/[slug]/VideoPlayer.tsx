@@ -13,7 +13,6 @@ import "@vidstack/react/player/styles/base.css";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
 import { saveProgress } from "@/lib/actions";
-import { resolveMovieboxClient, type MovieboxStream, type MovieboxCaption } from "@/lib/providers/moviebox-client";
 import type { ResolvedSource, StreamOption, CaptionTrack } from "@/lib/providers/types";
 
 function detectVideoType(url: string): "application/x-mpegurl" | "application/dash+xml" | "video/webm" | "video/mp4" {
@@ -78,9 +77,6 @@ function ProgressTracker({
 
 function applyCaptionTransparent(el: HTMLElement | null | undefined, transparent: boolean) {
   if (!el) return;
-  // Toggle a data attribute on <media-player>. A CSS rule in globals.css then
-  // targets it with !important so the caption background/blur disappear
-  // regardless of VidStack's theme or any of its font CSS-vars (no conflicts).
   el.toggleAttribute("data-caption-transparent", transparent);
 }
 
@@ -140,9 +136,45 @@ function SeekToStart({ startTime }: { startTime?: number }) {
   return null;
 }
 
+/** Translate a single subtitle track via our API */
+async function fetchTranslatedSubtitle(originalUrl: string): Promise<string> {
+  try {
+    const res = await fetch(`/api/translate-subtitle?url=${encodeURIComponent(originalUrl)}`);
+    if (!res.ok) {
+      console.error("[translate] API returned", res.status, "for", originalUrl.slice(0, 120));
+      return originalUrl;
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    console.log("[translate] success for", originalUrl.slice(0, 80));
+    return blobUrl;
+  } catch (e) {
+    console.error("[translate] fetch failed:", e);
+    return originalUrl;
+  }
+}
+
+/** Preload and translate all captions, returning new CaptionTrack[] with translated versions */
+async function preloadTranslatedCaptions(
+  captions: CaptionTrack[],
+): Promise<{ original: CaptionTrack[]; translated: CaptionTrack[] }> {
+  const translated: CaptionTrack[] = [];
+
+  for (const cap of captions) {
+    const translatedSrc = await fetchTranslatedSubtitle(cap.src);
+    translated.push({
+      ...cap,
+      src: translatedSrc,
+      label: cap.label.includes("Indonesian") ? cap.label : `${cap.label} (Terjemahan)`,
+      language: "id",
+    });
+  }
+
+  return { original: captions, translated };
+}
+
 export function VideoPlayer({
   sources,
-  movieboxParams,
   preferredSource,
   title,
   poster,
@@ -153,12 +185,6 @@ export function VideoPlayer({
   onSourceChange,
 }: {
   sources: ResolvedSource[];
-  movieboxParams?: {
-    subjectId: string | null;
-    detailPath: string;
-    season?: string;
-    episode?: string;
-  } | null;
   preferredSource?: string;
   title: string;
   poster?: string | null;
@@ -174,42 +200,12 @@ export function VideoPlayer({
       : sources[0]?.id ?? "",
   );
 
-  const [movieboxSource, setMovieboxSource] = useState<ResolvedSource | null>(null);
-  const [movieboxLoading, setMovieboxLoading] = useState(false);
-
-  // Resolve MovieBox client-side on mount
-  useEffect(() => {
-    if (!movieboxParams?.subjectId) return;
-    setMovieboxLoading(true);
-    resolveMovieboxClient(
-      movieboxParams.subjectId,
-      movieboxParams.detailPath,
-      movieboxParams.season,
-      movieboxParams.episode,
-    ).then((result) => {
-      if (result) {
-        setMovieboxSource({
-          id: "moviebox",
-          label: "MovieBox",
-          kind: "hls",
-          hls: {
-            streams: result.streams.map((s) => ({
-              quality: s.quality,
-              url: s.url,
-            })),
-            captions: result.captions.map((c) => ({
-              src: c.src,
-              label: c.label,
-              language: c.language,
-              type: c.type,
-              defaultTrack: c.defaultTrack,
-            })),
-          },
-        });
-        setInternalId("moviebox");
-      }
-    }).finally(() => setMovieboxLoading(false));
-  }, [movieboxParams?.subjectId, movieboxParams?.detailPath, movieboxParams?.season, movieboxParams?.episode]);
+  const [autoTranslate, setAutoTranslate] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("cinemastral:auto-translate") === "1";
+  });
+  const [translating, setTranslating] = useState(false);
+  const [translatedCaptions, setTranslatedCaptions] = useState<CaptionTrack[] | null>(null);
 
   const controlled = activeSourceId !== undefined;
   const activeId = controlled ? activeSourceId : internalId;
@@ -218,22 +214,35 @@ export function VideoPlayer({
     else setInternalId(id);
   };
 
-  // Merge movieboxSource into sources list
-  const allSources = movieboxSource
-    ? [movieboxSource, ...sources.filter((s) => s.id !== "moviebox")]
-    : sources;
-  const active = allSources.find((s) => s.id === activeId) ?? allSources[0];
+  const active = sources.find((s) => s.id === activeId) ?? sources[0];
 
-  if (movieboxLoading && !active) {
-    return (
-      <div className="flex aspect-video w-full items-center justify-center rounded-lg bg-[var(--color-surface-2)]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-          <p className="text-sm text-white/60">Memuat stream...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleToggleTranslate = useCallback((on: boolean) => {
+    setAutoTranslate(on);
+    localStorage.setItem("cinemastral:auto-translate", on ? "1" : "0");
+    if (!on) setTranslatedCaptions(null);
+  }, []);
+
+  // Preload translated captions when auto-translate is ON
+  useEffect(() => {
+    if (!autoTranslate || !active || active.kind !== "hls" || !active.hls?.captions?.length) {
+      setTranslatedCaptions(null);
+      return;
+    }
+
+    console.log("[translate] starting for", active.hls.captions.length, "tracks");
+    let cancelled = false;
+    setTranslating(true);
+
+    preloadTranslatedCaptions(active.hls.captions).then((result) => {
+      if (!cancelled) {
+        console.log("[translate] done, translated:", result.translated.length);
+        setTranslatedCaptions(result.translated);
+        setTranslating(false);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [autoTranslate, active]);
 
   if (!active) {
     return (
@@ -247,9 +256,35 @@ export function VideoPlayer({
 
   const iframe = active.kind === "iframe" ? active.iframe : undefined;
   const hls = active.kind === "hls" ? active.hls : undefined;
+  const captionsToShow = translatedCaptions ?? hls?.captions ?? [];
 
   return (
     <div className="relative flex flex-col gap-3">
+      {/* Translating overlay */}
+      {translating && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg bg-black/70">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[var(--color-primary)]" />
+            <p className="text-sm text-white/80">Menerjemahkan subtitle...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-translate toggle */}
+      <div className="flex items-center gap-2 self-end">
+        <button
+          onClick={() => handleToggleTranslate(!autoTranslate)}
+          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            autoTranslate
+              ? "bg-[var(--color-primary)] text-black"
+              : "bg-white/10 text-white/60 hover:bg-white/15"
+          }`}
+        >
+          <i className={`fa-solid ${autoTranslate ? "fa-language" : "fa-globe"}`} />
+          {autoTranslate ? "Translate ON" : "Translate EN → ID"}
+        </button>
+      </div>
+
       {iframe ? (
         <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
           <iframe
@@ -282,7 +317,7 @@ export function VideoPlayer({
           playsInline
         >
           <MediaProvider>
-            {(hls?.captions ?? []).map((cap: CaptionTrack, i) => (
+            {captionsToShow.map((cap: CaptionTrack, i) => (
               <Track
                 key={`track-${i}`}
                 src={cap.src}
@@ -290,7 +325,7 @@ export function VideoPlayer({
                 label={cap.label}
                 language={cap.language ?? "id"}
                 type={cap.type ?? "vtt"}
-                default={cap.defaultTrack ?? i === 0}
+                default={autoTranslate ? i === 0 : (cap.defaultTrack ?? i === 0)}
               />
             ))}
           </MediaProvider>

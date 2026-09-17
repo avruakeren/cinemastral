@@ -5,7 +5,7 @@ import { VideoPlayer } from "./VideoPlayer";
 import { Dropdown, EpisodePicker, type EpisodePickerItem } from "@/components/EpisodePicker";
 import type { ResolvedSource } from "@/lib/providers/types";
 
-const SERVER_LABELS = ["Server Utama", "Server Alternatif"];
+const SERVER_LABELS = ["Server 1", "Server 2", "Server 3", "Server 4"];
 
 function ServerSelector({
   sources,

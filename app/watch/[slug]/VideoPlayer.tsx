@@ -200,12 +200,11 @@ export function VideoPlayer({
       : sources[0]?.id ?? "",
   );
 
-  const [autoTranslate, setAutoTranslate] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("cinemastral:auto-translate") === "1";
-  });
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [translatedCaptions, setTranslatedCaptions] = useState<CaptionTrack[] | null>(null);
+  const [iframeError, setIframeError] = useState(false);
+  const iframeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const controlled = activeSourceId !== undefined;
   const activeId = controlled ? activeSourceId : internalId;
@@ -213,6 +212,17 @@ export function VideoPlayer({
     if (controlled) onSourceChange?.(id);
     else setInternalId(id);
   };
+
+  // Sync autoTranslate from localStorage after hydration
+  useEffect(() => {
+    setAutoTranslate(localStorage.getItem("cinemastral:auto-translate") === "1");
+  }, []);
+
+  // Reset iframe error when source changes
+  useEffect(() => {
+    setIframeError(false);
+    if (iframeTimerRef.current) clearTimeout(iframeTimerRef.current);
+  }, [activeId]);
 
   const active = sources.find((s) => s.id === activeId) ?? sources[0];
 
@@ -287,19 +297,46 @@ export function VideoPlayer({
 
       {iframe ? (
         <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+          {iframeError && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/80">
+              <i className="fa-solid fa-triangle-exclamation text-3xl text-yellow-500/80" />
+              <p className="text-sm text-white/60">Server ini gagal dimuat.</p>
+              {sources.length > 1 && (
+                <button
+                  onClick={() => {
+                    const next = sources.find((s) => s.id !== active?.id);
+                    if (next) {
+                      setIframeError(false);
+                      setActiveId(next.id);
+                    }
+                  }}
+                  className="mt-2 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-xs font-medium text-black hover:opacity-90"
+                >
+                  Coba Server Lain
+                </button>
+              )}
+            </div>
+          )}
           <iframe
             src={iframe}
+            key={`${active?.id}-${iframe}`}
             title={title}
             className="absolute inset-0 h-full w-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
             allowFullScreen
             referrerPolicy="no-referrer-when-downgrade"
-            sandbox="allow-scripts allow-same-origin allow-presentation"
+            onLoad={() => {
+              if (iframeTimerRef.current) clearTimeout(iframeTimerRef.current);
+              setIframeError(false);
+            }}
             onError={() => {
-              const alt = sources.find((s) => s.id !== active.id);
-              if (alt) {
-                console.warn("[player] iframe failed, falling back to", alt.label);
-                setActiveId(alt.id);
+              console.warn("[player] iframe load error, source:", active?.id);
+              const next = sources.find((s) => s.id !== active?.id);
+              if (next) {
+                console.warn("[player] falling back to", next.label);
+                setActiveId(next.id);
+              } else {
+                setIframeError(true);
               }
             }}
           />

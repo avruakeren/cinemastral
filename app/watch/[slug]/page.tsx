@@ -8,14 +8,41 @@ import { ensureContentSynced, fetchOflixDetail } from "@/lib/sync";
 import { resolveVidcoreSource } from "@/lib/providers/vidcore";
 import { resolveVidcoreByTmdbId } from "@/lib/providers/vidcore";
 import { resolveMovieboxSource } from "@/lib/providers/moviebox";
+import { resolveVsrcByTmdbId } from "@/lib/providers/vsrc";
+import { resolve2embedByTmdbId } from "@/lib/providers/twoembed";
 import type { ResolvedSource } from "@/lib/providers/types";
 import type { Episode } from "@/lib/types";
+import { createInsForgeServerClient } from "@/lib/insforge/server";
 import {
   parseTmdbSlug,
   getTmdbDetails,
   tmdbToFullContent,
   buildTmdbEpisodes,
 } from "@/lib/tmdb";
+
+/** Try to read a cached TMDB id from content_sources (any provider that stores it). */
+async function readCachedTmdbId(
+  contentId: string,
+): Promise<{ tmdb_id: number; media_type: "movie" | "tv" } | null> {
+  try {
+    const sb = (await createInsForgeServerClient()).database;
+    const { data, error } = await sb
+      .from("content_sources")
+      .select("metadata")
+      .eq("content_id", contentId)
+      .not("metadata->>tmdb_id", "is", null)
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    const m = (data.metadata as Record<string, unknown>) ?? {};
+    const tmdbId = Number(m.tmdb_id);
+    const mediaType = m.media_type;
+    if (!tmdbId || (mediaType !== "movie" && mediaType !== "tv")) return null;
+    return { tmdb_id: tmdbId, media_type: mediaType };
+  } catch {
+    return null;
+  }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +118,7 @@ export default async function WatchPage({
   const sources: ResolvedSource[] = [];
   try {
     if (isTmdb && tmdbSlugMatch) {
+      console.log("[watch:sources] TMDB slug:", tmdbSlugMatch.id, tmdbSlugMatch.mediaType);
       const vc = resolveVidcoreByTmdbId(
         tmdbSlugMatch.id,
         tmdbSlugMatch.mediaType,
@@ -99,25 +127,42 @@ export default async function WatchPage({
         isFilm ? undefined : String(episodeNo),
       );
       sources.push(vc);
+      const vx = resolveVsrcByTmdbId(
+        tmdbSlugMatch.id,
+        tmdbSlugMatch.mediaType,
+        isFilm ? undefined : String(season),
+        isFilm ? undefined : String(episodeNo),
+      );
+      sources.push(vx);
+      const em = resolve2embedByTmdbId(
+        tmdbSlugMatch.id,
+        tmdbSlugMatch.mediaType,
+        isFilm ? undefined : String(season),
+        isFilm ? undefined : String(episodeNo),
+      );
+      sources.push(em);
     } else {
-      const [moviebox, vidcore] = await Promise.all([
-        resolveMovieboxSource(
-          content,
-          isFilm ? undefined : String(season),
-          isFilm ? undefined : String(episodeNo),
-        ),
-        resolveVidcoreSource(
-          content,
-          isFilm ? undefined : String(season),
-          isFilm ? undefined : String(episodeNo),
-        ),
+      const seasonStr = isFilm ? undefined : String(season);
+      const episodeStr = isFilm ? undefined : String(episodeNo);
+      const [moviebox, vidcore, cachedTmdb] = await Promise.all([
+        resolveMovieboxSource(content, seasonStr, episodeStr),
+        resolveVidcoreSource(content, seasonStr, episodeStr),
+        readCachedTmdbId(content.id),
       ]);
       if (moviebox) sources.push(moviebox);
       if (vidcore) sources.push(vidcore);
+      const mediaType = (cachedTmdb?.media_type ?? (isFilm ? "movie" : "tv")) as "movie" | "tv";
+      const tmdbId = cachedTmdb?.tmdb_id ?? 0;
+      if (tmdbId) {
+        sources.push(resolveVsrcByTmdbId(tmdbId, mediaType, seasonStr, episodeStr));
+        sources.push(resolve2embedByTmdbId(tmdbId, mediaType, seasonStr, episodeStr));
+      }
     }
   } catch (e) {
     console.error("[watch:resolveSources]", slug, season, episodeNo, e);
   }
+
+  console.log("[watch:sources]", slug, sources.length, "servers:", sources.map((s) => s.id).join(", "));
 
   const episodePicker =
     !isFilm && episodes.length > 0
